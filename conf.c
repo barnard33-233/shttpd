@@ -11,7 +11,7 @@ int is_set(int map, int mask){
 }
 
 // delete extra spaces of a string
-char* strtrim(char * str){
+inline char* strtrim(char * str){
     assert(str != NULL);
     char * start = str;
     while(*start == ' '){
@@ -28,6 +28,10 @@ char* strtrim(char * str){
 // parse a single line in the .conf file. separate key and value from the whole line
 static int parse_line(char * buffer, char ** value){
     assert(buffer != NULL);
+
+    while(*buffer == ' '){
+        buffer ++;
+    }
 
     // ignore white spaces and comment
     if(buffer[0] == '\n' || buffer[0] == '#'){ 
