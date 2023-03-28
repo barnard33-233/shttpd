@@ -25,13 +25,13 @@ const char conf_name[CONF_COUNT][64] = {
 };
 
 const struct option long_opts[] = {
-    {"CGIRoot", no_argument, NULL, 'c'},
-    {"DefaultFile", no_argument, NULL, 'd'},
-    {"DocumentRoot", no_argument, NULL, 'o'},
-    {"ConfigFile", no_argument, NULL, 'f'},
-    {"ListenPort", no_argument, NULL, 'l'},
-    {"MaxClient", no_argument, NULL, 'm'},
-    {"TimeOut", no_argument, NULL, 't'},
+    {"CGIRoot", required_argument, NULL, 'c'},
+    {"DefaultFile", required_argument, NULL, 'd'},
+    {"DocumentRoot", required_argument, NULL, 'o'},
+    {"ConfigFile", required_argument, NULL, 'f'},
+    {"ListenPort", required_argument, NULL, 'l'},
+    {"MaxClient", required_argument, NULL, 'm'},
+    {"TimeOut", required_argument, NULL, 't'},
     {"Help", no_argument, NULL, 'h'},
     {0,0,0,0},
 };

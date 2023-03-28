@@ -2,6 +2,7 @@
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/types.h>
 #include "conf.h"
 #include <assert.h>
 
@@ -105,7 +106,7 @@ int parse_conf_file(struct conf_opts* opts, char* file_name){
 int parse_conf_cmd(struct conf_opts * opts, int argc, char ** argv){
     assert(opts != NULL);
     
-    if(argc == 0){
+    if(argc <= 1){
         return OPT_SET_NONE;
     }
 
@@ -201,7 +202,7 @@ void parse_conf(struct conf_opts* opts, int argc, char ** argv){
         *opts = cmdline_opts;
     }
     else{
-        char conf_file[128] = "/etc/SHTTPD.conf";
+        char conf_file[128] = "./test.conf";
         parse_conf_file(opts, conf_file);
         
         // XXX
