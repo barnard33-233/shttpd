@@ -19,6 +19,7 @@
 #define ENTITY_SIZE 8192
 
 #define ERR_BUF_SIZE 4096
+#define MAX_METHOD_SIZE 8
 
 #define ENDL "\r\n"
 
@@ -30,9 +31,10 @@ struct header_item{
 
 struct http_req{
     // request line
-    int hreq_method;
+    char hreq_method[MAX_METHOD_SIZE]; // TODO
     char hreq_uri[HREQ_MEMBER_SIZE];
     char hreq_version[HREQ_MEMBER_SIZE];
+    int(*hreq_method_fn)(struct http_req*, int);
 
     // header
     struct header_item* hreq_items;

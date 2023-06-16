@@ -1,8 +1,8 @@
-#include <pthread.h>
-
-#include "conf.h"
 #include "common.h"
+#include "conf.h"
 #include "http.h"
+
+#include <pthread.h>
 
 struct conf_opts * global_opts;
 int global_sock = 0;
