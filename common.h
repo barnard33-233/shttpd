@@ -20,9 +20,7 @@
 #define ERR_BIND    2
 #define ERR_LISTEN  3
 #define ERR_ACCEPT  4
-#define ERR_HTTPREQ 5
-#define ERR_HTTPMETHOD 6
-#define ERR_HTTPVER 7
+#define ERR_THREAD  5
 #define ERR_OTHER   -1
 
 #ifndef NDEBUG

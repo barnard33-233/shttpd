@@ -31,6 +31,10 @@ inline char* strtrim(char * str){
 static int parse_line(char * buffer, char ** value){
     assert(buffer != NULL);
 
+    char buffer_copy[16];
+    strncpy(buffer_copy, buffer, 15);
+    buffer_copy[15] = '\0';
+
     while(*buffer == ' '){
         buffer ++;
     }
@@ -45,7 +49,7 @@ static int parse_line(char * buffer, char ** value){
     key = strtrim(strtok(buffer, "="));
     *value = strtrim(strtok(NULL, "="));
     if(key == NULL || *value == NULL || strtok(NULL, "=") != NULL){
-        fprintf(stderr, "WARNING: Syntex error in SHTTPD.conf\n"); // TODO: better warning
+        fprintf(stderr, "WARNING: Syntex error in SHTTPD.conf, around \"%s\"\n", buffer_copy);
         return -1;
     }
 

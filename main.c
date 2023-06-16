@@ -9,17 +9,24 @@ int global_sock = 0;
 
 void handle_exit(int num){
     // release resources when exit
-    // TODO
     printf("[I] Exit");
     close(global_sock);
     exit(0);
 }
 
+// DEBUG:
+#ifndef NDEBUG
+void handle_sigsegv(int num){
+    printf("[E] SIGSEGV");
+    close(global_sock);
+    exit(-1);
+}
+#endif
+
 /*
  * handel various errors.
  */
 void error_handler(int num){
-    // TODO
     switch(num){
         case ERR_SOCKET:
             printf("[E] `socket` fail\n");
@@ -34,7 +41,12 @@ void error_handler(int num){
             printf("[E]: `listen` fail\n");
             close(global_sock);
             exit(-1);
+        case ERR_THREAD:
+            printf("[E] fail to create a new thread\n");
+            break;
         default:
+            printf("[E] unknown fail\n");
+            close(global_sock);
             exit(-1);
     }
 }
@@ -84,7 +96,9 @@ int main_loop(int http_sock, struct conf_opts * opts){
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
 
         if(pthread_create(&thread, &attr, handle_request, (void*)&client_sock)){
-            error_handler(ERR_OTHER); // TODO
+            err_500_internal_server_error(client_sock);
+            close(client_sock);
+            error_handler(ERR_THREAD);
         }
     }
 }
@@ -103,6 +117,9 @@ int main(int argc, char ** argv){
     signal(SIGINT, handle_exit);
     signal(SIGQUIT, handle_exit);
     signal(SIGKILL, handle_exit);
+#ifndef NDEBUG
+    signal(SIGSEGV, handle_sigsegv);
+#endif
 
     // setup
     http_sock = setup_server(&opts);

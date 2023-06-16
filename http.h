@@ -63,5 +63,11 @@ struct http_res{
 
 
 void * handle_request(void* args);
+void hi_free(struct header_item *item);
+void hreq_free(struct http_req * hreq);
+void hres_free(struct http_res * hres);
+
+
+void err_500_internal_server_error(int sock);
 
 #endif

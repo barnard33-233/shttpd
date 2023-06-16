@@ -1,6 +1,9 @@
 # test.conf
 shttpd
 
+# python
+__pycache__
+
 # IDE
 .vscode
 .idea

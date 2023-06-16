@@ -16,7 +16,7 @@ int readline(int fd, char * buffer, int size){
         if(this == '\n'){
             // end
             if(last != '\r'){
-                error_handler(ERR_HTTPREQ);
+                return 1; // syntax error 400
             }
             else{
                 buffer[i - 1] = '\0';
@@ -32,7 +32,7 @@ int readline(int fd, char * buffer, int size){
         buffer[i] = this;
     }
     buffer[size - 1] = '\0';
-    error_handler(ERR_HTTPREQ);
+    return 2; // buffer overflow 500
 }
 
 int set_nonblock(int fd){
@@ -149,8 +149,27 @@ void err_501_not_implemented(int sock){
     write(sock, buffer, strlen(buffer));
 }
 
+void err_505_version_not_supported(int sock){
+    char buffer[ERR_BUF_SIZE];
+
+    // response line
+    sprintf(buffer, "HTTP/1.1 505 Version Not Supported"ENDL);
+    write(sock, buffer, strlen(buffer));
+    
+    // response header
+    sprintf(buffer, "%s", server_info);
+    write(sock, buffer, strlen(buffer));
+    sprintf(buffer, "Content-Type: text/html"ENDL);
+    write(sock, buffer, strlen(buffer));
+    sprintf(buffer, ENDL);
+    write(sock, buffer, strlen(buffer));
+
+    // entity    
+    sprintf(buffer, err_html, "505", "Version Not Supported");
+    write(sock, buffer, strlen(buffer));
+}
+
 void res_200_ok(int sock, struct http_res * response){
-    //TODO
     char buffer[ERR_BUF_SIZE];
 
     // response line
@@ -182,26 +201,27 @@ void res_200_ok(int sock, struct http_res * response){
 
 int response_file(int sock, char* path_ptr){
     char path[BUFSIZ] = {0};
-    DEBUG("path=%s, path_ptr=%s\n", path, path_ptr);
+    // DEBUG("path=%s, path_ptr=%s\n", path, path_ptr);
     struct stat path_stat;
     struct http_res response;
+    int status;
 
     // FIXME: this is not safe...
     strcpy(path, global_opts->DocumentRoot);
-    strncat(path, path_ptr, strlen(path_ptr) + 1);
+    strcat(path, path_ptr);
     if(stat(path, &path_stat) != 0){
-        // error_handler(ERR_OTHER);// TODO
         DEBUG("404, strerror: %s, path=%s\n", strerror(errno), path);
         err_404_not_found(sock);
-        return 404;
+        status = 404;
+        goto response_file_exit;
     }
     if(S_ISDIR(path_stat.st_mode)){
         strcat(path, "/index.html");
         if(stat(path, &path_stat) != 0){
-            // error_handler(ERR_OTHER); // TODO
             DEBUG("404, strerror: %s, path=%s\n", strerror(errno), path);
             err_404_not_found(sock);
-            return 404;
+            status = 404;
+            goto response_file_exit;
         }
     }
 
@@ -211,7 +231,6 @@ int response_file(int sock, char* path_ptr){
     response.hres_entity_length = file_size;
 
     // recognize file type and fullfill header
-    // TODO
     struct header_item * this_item = NULL;
     struct header_item * first_item = NULL;
 
@@ -240,12 +259,15 @@ int response_file(int sock, char* path_ptr){
         strncpy(this_item->hi_val, "image/png", 10);
     }
     else{
-        strncpy(this_item->hi_val, "application/octet-stream", 20);
+        strncpy(this_item->hi_val, "application/octet-stream", 24);
     }
 
     response.hres_items = first_item;
     res_200_ok(sock, &response);
-    return 200;
+    status = 200;
+response_file_exit:
+    hi_free(response.hres_items);
+    return status;
 }
 
 /*implementations for each method*/
@@ -355,6 +377,8 @@ void * handle_request(void * args){
     // TODO: timeout
     int client_sock = *((int*)args);
     struct http_req request = {0};
+    int status = 0;
+    int ret;
 
     // parse 'request line'
     char reqline_buf[3 * HREQ_MEMBER_SIZE + 3];
@@ -362,34 +386,66 @@ void * handle_request(void * args){
     int method_code = -1;
 
     DEBUG("request line\n");
-    readline(client_sock, reqline_buf, sizeof(reqline_buf));
+    ret = readline(client_sock, reqline_buf, sizeof(reqline_buf));
+    if(ret == 1 || ret == -1){
+        err_400_bad_request(client_sock);
+        status = 400;
+        goto handle_request_exit;
+    }
+    else if(ret == 2){
+        err_500_internal_server_error(client_sock);
+        status = 500;
+        goto handle_request_exit;
+    }
     sscanf(reqline_buf, "%s %s %s", method, request.hreq_uri, request.hreq_version);
     if((method_code = switch_method(method)) == HTTP_UNKOWN){
-        error_handler(ERR_HTTPMETHOD);
+        err_400_bad_request(client_sock);
+        status = 400;
+        goto handle_request_exit;
     }
 
     request.hreq_method = method_code;
 
     if(strncmp(request.hreq_version, "HTTP/1.1", 8)){
         DEBUG("version: %s\n", request.hreq_version);
-        error_handler(ERR_HTTPVER);
+        err_505_version_not_supported(client_sock);
+        status = 505;
+        goto handle_request_exit;
     }
 
     // set socket to non-block
     set_nonblock(client_sock);
 
     // parse 'http header'
-    // TODO free before exit
     char reqheader_buf[HTTPHDR_KEY_SIZE + HTTPHDR_VAL_SIZE + 2];
     struct header_item * this_item = NULL;
     struct header_item * last_item = NULL;
     struct header_item * first_item = NULL;
 
     DEBUG("request header\n");
-    while(readline(client_sock, reqheader_buf, sizeof(reqheader_buf)) != -1){
-        this_item = malloc(sizeof(struct header_item));
-        // TODO check if malloc is failed
+    while(1){
+        ret = readline(client_sock, reqheader_buf, sizeof(reqheader_buf));
+        if (ret == -1){
+            break;
+        }
+        else if(ret == 1){
+            err_400_bad_request(client_sock);
+            status = 400;
+            goto handle_request_exit;
+        }
+        else if (ret == 2){
+            err_500_internal_server_error(client_sock);
+            status = 500;
+            goto handle_request_exit;
+        }
+
+        if((this_item = malloc(sizeof(struct header_item))) == NULL){
+            err_500_internal_server_error(client_sock);
+            status = 500;
+            goto handle_request_exit;
+        }
         sscanf(reqheader_buf, "%s:%s", this_item->hi_key, this_item->hi_val);
+        this_item->hi_next = NULL;
         if(first_item == NULL){
             first_item = this_item;
         }
@@ -412,7 +468,6 @@ void * handle_request(void * args){
     DEBUG("entity length = %d;return = %ld\n", (int)strlen(request.hreq_entity), t);
 
     // handle request
-    int status = 0;
     switch(request.hreq_method){
         case HTTP_OPTIONS:
             status = method_options(&request, client_sock);
@@ -438,12 +493,34 @@ void * handle_request(void * args){
         case HTTP_CONNECT:
             status = method_connect(&request, client_sock);
             break;
+        default:
+            status = -1;
+            break;
     }
     // DEBUG("finish execute:%s %s %s\n", method, request.hreq_uri, request.hreq_version);
+handle_request_exit:
     printf("[I] %s %s %s %d\n", method, request.hreq_uri, request.hreq_version, status);
-exit:
     close(client_sock);
-    // TODO: release
+    DEBUG("`hi_free` start\n");
+    hi_free(request.hreq_items);
+    DEBUG("`hi_free` end\n");
     return NULL;
 }
 
+
+void hi_free(struct header_item *item){
+    for(struct header_item * this_item = item, * next_item = item; next_item != NULL; this_item = next_item){
+        next_item = this_item->hi_next;
+        free(this_item);
+    }
+}
+
+void hreq_free(struct http_req * hreq){
+    hi_free(hreq->hreq_items);
+    free(hreq);
+}
+
+void hres_free(struct http_res * hres){
+    hi_free(hres->hres_items);
+    free(hres);
+}
