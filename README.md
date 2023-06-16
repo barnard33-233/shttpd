@@ -1,11 +1,9 @@
 # shttpd
 
-支持的特性：
+## support
 
-+ HTTP/1.1
++ HTTP/1.1 GET
 
-## TODO
+## build
 
-CGI
-
-写点报告
+Edit the makefile and change flags manually. then `make`.
