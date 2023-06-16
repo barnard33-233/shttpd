@@ -1,9 +1,11 @@
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <getopt.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/types.h>
 #include "conf.h"
+#include "common.h"
 #include <assert.h>
 
 int is_set(int map, int mask){
@@ -175,6 +177,7 @@ int parse_conf_cmd(struct conf_opts * opts, int argc, char ** argv){
 }
 
 // print struct conf*opts
+#ifndef NDEBUG
 void print_conf(struct conf_opts* opts){
     printf(
         "CGIRoot:%s\n"
@@ -193,23 +196,29 @@ void print_conf(struct conf_opts* opts){
         opts->TimeOut
     );
 }
+#else
+void print_conf(struct conf_opts* opts){}
+#endif
 
 void parse_conf(struct conf_opts* opts, int argc, char ** argv){
     struct conf_opts cmdline_opts = default_conf_opt;
     int map = OPT_SET_NONE;
-    
-    *opts = default_conf_opt;
 
+    *opts = default_conf_opt;
+    
     // parse command line paramaters
     map = parse_conf_cmd(&cmdline_opts, argc, argv);
     if(is_set(map, OPT_SET_ALL_CONF)){
         *opts = cmdline_opts;
     }
     else{
-        char conf_file[128] = "./test.conf";
+        char conf_file[128] = {0};
+        if (is_set(map, OPT_SET_f)){
+            strncpy(opts->ConfigFile, cmdline_opts.ConfigFile, 128);
+        }
+        strncpy(conf_file, opts->ConfigFile, 128);
         parse_conf_file(opts, conf_file);
         
-        // XXX
         if (is_set(map, OPT_SET_c)){
             strncpy(opts->CGIRoot, cmdline_opts.CGIRoot, 128);
         }
@@ -220,10 +229,6 @@ void parse_conf(struct conf_opts* opts, int argc, char ** argv){
         
         if (is_set(map, OPT_SET_o)){
             strncpy(opts->DocumentRoot, cmdline_opts.DocumentRoot, 128);
-        }
-
-        if (is_set(map, OPT_SET_f)){
-            strncpy(opts->ConfigFile, cmdline_opts.ConfigFile, 128);
         }
 
         if (is_set(map, OPT_SET_l)){
