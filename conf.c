@@ -39,7 +39,7 @@ static int parse_line(char * buffer, char ** value){
         buffer ++;
     }
 
-    // ignore white spaces and comment
+    // ignore blank lines and comments
     if(buffer[0] == '\n' || buffer[0] == '#'){ 
         return -1;
     }

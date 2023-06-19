@@ -417,7 +417,7 @@ int response_file(int sock, char* path_ptr){
         strncpy(this_item->hi_val, "image/png", 10);
     }
     else{
-        strncpy(this_item->hi_val, "application/octet-stream", 24);
+        strncpy(this_item->hi_val, "application/octet-stream", 25);
     }
 
     response.hres_items = first_item;
@@ -554,17 +554,17 @@ void * handle_request(void * args){
         goto handle_request_exit;
     }
     sscanf(reqline_buf, "%s %s %s", request.hreq_method, request.hreq_uri, request.hreq_version);
-    if((switch_method(&request)) == -1){
-        DEBUG("bad method\n");
-        err_400_bad_request(client_sock);
-        status = 400;
-        goto handle_request_exit;
-    }
-
     if(strncmp(request.hreq_version, "HTTP/1.1", 8)){
         DEBUG("version not supported. version: %s\n", request.hreq_version);
         err_505_version_not_supported(client_sock);
         status = 505;
+        goto handle_request_exit;
+    }
+
+    if((switch_method(&request)) == -1){
+        DEBUG("bad method\n");
+        err_400_bad_request(client_sock);
+        status = 400;
         goto handle_request_exit;
     }
 

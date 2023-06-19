@@ -1,7 +1,7 @@
 CC=gcc
 RELEASE=-DNDEBUG
 DEBUG=-g
-CFLAGS=-Wall $(DEBUG)
+CFLAGS=-Wall $(RELEASE) # edit me
 TARGET=shttpd
 
 default: $(TARGET)
